@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#030107">
+  <title>Galaxia de Amor | Feliz Cumpleaños</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="universe" id="universe">
+    <canvas id="galaxy-canvas" aria-hidden="true"></canvas>
+    <div class="nebula nebula-one" aria-hidden="true"></div>
+    <div class="nebula nebula-two" aria-hidden="true"></div>
+
+    <section class="welcome-screen" id="welcome-screen" aria-labelledby="welcome-title">
+      <div class="welcome-stars" aria-hidden="true"></div>
+      <div class="welcome-content">
+        <p class="eyebrow">Una pequeña constelación para ti</p>
+        <h1 id="welcome-title">Tengo algo especial para ti... <span>💗</span></h1>
+        <p class="welcome-subtitle">Feliz cumpleaños, amor</p>
+        <button class="surprise-button" id="surprise-button" type="button">
+          <span>Abrir mi sorpresa</span>
+          <span aria-hidden="true">💕</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="experience" id="experience" aria-label="Galaxia de amor">
+      <div class="scene-heading" id="scene-heading">
+        <p class="eyebrow">Para la persona que ilumina mi mundo</p>
+        <h2>Feliz cumpleaños, amor <span>💗</span></h2>
+      </div>
+
+      <div class="heart-copy" id="heart-copy">
+        <p>Hoy el universo brilla un poquito más<br>porque es tu cumpleaños.</p>
+      </div>
+
+      <div class="romantic-phrases" id="romantic-phrases" aria-live="polite">
+        <p class="phrase phrase-one">Te amo</p>
+        <p class="phrase phrase-two">Eres mi estrella favorita</p>
+        <p class="phrase phrase-three">Brillamos más juntos</p>
+        <p class="phrase phrase-four">Mi universo eres tú</p>
+        <p class="phrase phrase-five">Gracias por llegar a mi vida</p>
+        <p class="phrase phrase-six">Hasta las estrellas saben cuánto te amo</p>
+        <p class="phrase phrase-seven">Siempre tú <span>❤️</span></p>
+        <p class="phrase phrase-eight">Por muchos cumpleaños juntos</p>
+        <p class="phrase phrase-nine">Mi lugar favorito siempre será contigo</p>
+        <p class="phrase phrase-ten">Feliz cumpleaños, mi amor <span>💗</span></p>
+        <p class="phrase">Eres lo más bonito de mi universo</p>
+        <p class="phrase">Contigo todo tiene más luz</p>
+        <p class="phrase">Mi persona favorita <span>💗</span></p>
+        <p class="phrase">Que la vida nos regale muchos momentos juntos</p>
+        <p class="phrase">Hoy celebramos tu existencia</p>
+        <p class="phrase">Te elegiría en cualquier universo</p>
+        <p class="phrase">Eres ese lugar donde siempre quiero estar</p>
+        <p class="phrase">Mi estrella entre millones</p>
+        <p class="phrase">Gracias por hacer mis días especiales</p>
+        <p class="phrase">Tú haces que mi mundo sea más bonito</p>
+        <p class="phrase">Nuestro amor no conoce distancias</p>
+        <p class="phrase">En todas las galaxias te elegiría a ti</p>
+        <p class="phrase">Un universo entero no alcanza para decirte cuánto te quiero</p>
+        <p class="phrase">Que nunca nos falten motivos para sonreír juntos</p>
+        <p class="phrase">Hoy las estrellas brillan por ti <span>✨</span></p>
+        <p class="phrase">Mi corazón siempre encuentra el camino hacia ti</p>
+        <p class="phrase">Somos dos estrellas encontrándose en el universo</p>
+      </div>
+    </section>
+
+    <div class="scene-controls" aria-label="Controles de la galaxia">
+      <button id="zoom-in" type="button" aria-label="Acercar">+</button>
+      <button id="zoom-out" type="button" aria-label="Alejar">−</button>
+      <button id="reset-camera" type="button" aria-label="Reiniciar cámara">⟳</button>
+      <button class="music-toggle" id="music-toggle" type="button" aria-label="Activar música" aria-pressed="false">
+        <span id="music-icon" aria-hidden="true">🔇</span>
+      </button>
+    </div>
+    <audio id="birthday-music" preload="auto" loop>
+      <source src="assets/audio/musica.mp3" type="audio/mpeg">
+    </audio>
+  </main>
+
+  <script src="js/script.js"></script>
+</body>
+</html>
