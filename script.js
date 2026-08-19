@@ -16,15 +16,20 @@
 
   const TAU = Math.PI * 2;
   const isMobile = window.innerWidth < 768;
-  const STAR_COUNT = isMobile ? 430 : 720;
-  const GALAXY_COUNT = isMobile ? 190 : 340;
-  const HEART_COUNT = isMobile ? 150 : 220;
-  const ORBIT_COUNT = isMobile ? 32 : 58;
+  const STAR_COUNT = isMobile ? 220 : 450;
+  const GALAXY_COUNT = isMobile ? 110 : 220;
+  const HEART_COUNT = isMobile ? 82 : 140;
+  const ORBIT_COUNT = isMobile ? 18 : 32;
   const perspective = 500;
   const stars = [];
   const galaxyParticles = [];
   const heartParticles = [];
   const orbitParticles = [];
+  const galaxyProjections = [];
+  const heartProjections = [];
+  const orbitProjections = [];
+  const starProjection = { x: 0, y: 0, z: 0, scale: 1 };
+  const centerPoint = { x: 0, y: 0 };
   const effects = [];
   const shootingStars = [];
   const activePointers = new Map();
@@ -52,6 +57,7 @@
   const visiblePhraseIndexes = [];
   let nextShootingStar = 5000;
   let pinchDistance = 0;
+  let animationFrame = 0;
 
   const random = (min, max) => Math.random() * (max - min) + min;
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -88,6 +94,7 @@
 
   function createGalaxy() {
     galaxyParticles.length = 0;
+    galaxyProjections.length = 0;
     for (let index = 0; index < GALAXY_COUNT; index += 1) {
       const arm = index % 4;
       const radius = Math.pow(Math.random(), 0.64) * Math.min(width, height) * 0.42 + 25;
@@ -102,6 +109,7 @@
         alpha: random(0.18, 0.7),
         phase: random(0, TAU)
       });
+      galaxyProjections.push({ x: 0, y: 0, z: 0, scale: 1, particle: galaxyParticles[index] });
     }
   }
 
@@ -114,6 +122,7 @@
 
   function createHeart() {
     heartParticles.length = 0;
+    heartProjections.length = 0;
     const scale = Math.min(width, height) * 0.0118;
     for (let index = 0; index < HEART_COUNT; index += 1) {
       const point = heartPoint(index / HEART_COUNT * TAU);
@@ -128,9 +137,11 @@
         phase: random(0, TAU),
         speed: random(0.6, 1.2)
       });
+      heartProjections.push({ x: 0, y: 0, z: 0, scale: 1, particle: heartParticles[index] });
     }
 
     orbitParticles.length = 0;
+    orbitProjections.length = 0;
     for (let index = 0; index < ORBIT_COUNT; index += 1) {
       orbitParticles.push({
         angle: random(0, TAU),
@@ -142,20 +153,19 @@
         alpha: random(0.4, 0.9),
         phase: random(0, TAU)
       });
+      orbitProjections.push({ x: 0, y: 0, z: 0, scale: 1, particle: orbitParticles[index] });
     }
   }
 
   function sceneCenter() {
-    return { x: width / 2, y: height * 0.47 };
+    centerPoint.x = width / 2;
+    centerPoint.y = height * 0.47;
+    return centerPoint;
   }
 
-  function transformPoint(point, extra = {}) {
-    let x = point.x;
-    let y = point.y;
-    let z = point.z;
-    const rx = (extra.rotationX || 0) + camera.rotationX;
-    const ry = (extra.rotationY || 0) + camera.rotationY;
-    const rz = extra.rotationZ || 0;
+  function transformPoint(x, y, z, rx, ry, rz, output) {
+    rx += camera.rotationX;
+    ry += camera.rotationY;
     let cos = Math.cos(ry);
     let sin = Math.sin(ry);
     let nextX = x * cos - z * sin;
@@ -174,7 +184,11 @@
     x = nextX;
     y = nextY;
     const scale = perspective / (perspective + z);
-    return { x: x * scale * camera.zoom, y: y * scale * camera.zoom, z, scale };
+    output.x = x * scale * camera.zoom;
+    output.y = y * scale * camera.zoom;
+    output.z = z;
+    output.scale = scale;
+    return output;
   }
 
   function drawStars(time, delta) {
@@ -184,20 +198,14 @@
     for (const star of stars) {
       star.z -= star.speed * delta;
       if (star.z < 35) star.z = 900;
-      const projection = transformPoint({
-        x: star.x + pointer.x * star.parallax * 30,
-        y: star.y + pointer.y * star.parallax * 18,
-        z: star.z
-      });
+      const projection = transformPoint(star.x + pointer.x * star.parallax * 30, star.y + pointer.y * star.parallax * 18, star.z, 0, 0, 0, starProjection);
       const alpha = star.alpha * (0.76 + Math.sin(time * 0.001 * star.twinkle + star.phase) * 0.24);
-      const radius = star.radius * projection.scale * camera.zoom;
+      const radius = star.radius * projection.scale;
       const x = center.x + projection.x;
       const y = center.y + projection.y;
       if (x < -8 || x > width + 8 || y < -8 || y > height + 8) continue;
       context.beginPath();
       context.fillStyle = `rgba(255, 220, 241, ${alpha})`;
-      context.shadowBlur = star.layer === 2 ? 10 : star.layer === 1 ? 5 : 2;
-      context.shadowColor = "rgba(255, 79, 164, 0.9)";
       context.arc(x, y, Math.max(0.25, radius), 0, TAU);
       context.fill();
     }
@@ -206,51 +214,37 @@
 
   function drawNebulaLights(time) {
     const center = sceneCenter();
-    const radius = Math.min(width, height) * 0.44;
-    const glow = context.createRadialGradient(center.x, center.y, 0, center.x, center.y, radius);
-    glow.addColorStop(0, "rgba(255, 21, 135, 0.1)");
-    glow.addColorStop(0.42, "rgba(128, 12, 89, 0.045)");
-    glow.addColorStop(1, "rgba(0, 0, 0, 0)");
-    context.fillStyle = glow;
+    context.fillStyle = "rgba(255, 21, 135, 0.018)";
     context.fillRect(0, 0, width, height);
-    for (let index = 0; index < 7; index += 1) {
+    for (let index = 0; index < 4; index += 1) {
       const angle = time * 0.00008 + index * 0.9;
       const orbit = Math.min(width, height) * (0.2 + index * 0.027);
       const x = center.x + Math.cos(angle) * orbit;
       const y = center.y + Math.sin(angle) * orbit * 0.56;
-      const spark = context.createRadialGradient(x, y, 0, x, y, 24 + index * 3);
-      spark.addColorStop(0, "rgba(255, 124, 192, 0.3)");
-      spark.addColorStop(1, "rgba(255, 32, 139, 0)");
-      context.fillStyle = spark;
-      context.fillRect(x - 40, y - 40, 80, 80);
+      context.fillStyle = "rgba(255, 90, 173, 0.12)";
+      context.beginPath();
+      context.arc(x, y, 13 + index * 3, 0, TAU);
+      context.fill();
     }
   }
 
   function drawGalaxy(time, delta) {
     const center = sceneCenter();
-    const points = [];
-    for (const particle of galaxyParticles) {
+    for (let index = 0; index < galaxyParticles.length; index += 1) {
+      const particle = galaxyParticles[index];
       particle.angle += particle.speed * delta;
       const angle = particle.angle + galaxyRotation + particle.arm * 0.18 + particle.spread;
-      points.push({
-        particle,
-        ...transformPoint({
-          x: Math.cos(angle) * particle.radius,
-          y: Math.sin(angle) * particle.radius * 0.44,
-          z: particle.z + Math.sin(angle * 2) * 18
-        }, { rotationX: 0.1, rotationY: 0.08 })
-      });
+      galaxyProjections[index].particle = particle;
+      transformPoint(Math.cos(angle) * particle.radius, Math.sin(angle) * particle.radius * 0.44, particle.z + Math.sin(angle * 2) * 18, 0.1, 0.08, 0, galaxyProjections[index]);
     }
-    points.sort((first, second) => first.z - second.z);
+    galaxyProjections.sort((first, second) => first.z - second.z);
     context.save();
     context.globalCompositeOperation = "lighter";
-    for (const point of points) {
+    for (const point of galaxyProjections) {
       const particle = point.particle;
       const alpha = particle.alpha * (0.76 + Math.sin(time * 0.0015 + particle.phase) * 0.24);
       context.beginPath();
       context.fillStyle = `rgba(255, ${120 + particle.arm * 13}, ${190 + particle.arm * 8}, ${alpha})`;
-      context.shadowBlur = 5;
-      context.shadowColor = "rgba(255, 45, 150, 0.65)";
       context.arc(center.x + point.x, center.y + point.y, particle.size * point.scale, 0, TAU);
       context.fill();
     }
@@ -274,8 +268,6 @@
       context.beginPath();
       context.strokeStyle = `rgba(255, ${110 + ring.alpha * 80}, ${180 + ring.alpha * 60}, ${ring.alpha})`;
       context.lineWidth = 1.1 + size;
-      context.shadowBlur = 16;
-      context.shadowColor = "rgba(255, 20, 137, 0.88)";
       context.ellipse(0, 0, ring.radius * size, ring.radius * size * (1 + ring.tilt * 0.22), 0, 0, TAU);
       context.stroke();
       context.restore();
@@ -288,27 +280,21 @@
     const beat = 1 + Math.sin(time * 0.0042) * 0.028;
     const visibleCount = Math.floor(heartParticles.length * heartProgress);
     const heartScale = Math.min(width, height) * 0.0095;
-    const points = [];
     for (let index = 0; index < visibleCount; index += 1) {
       const particle = heartParticles[index];
-      const projection = transformPoint({ x: particle.x * beat, y: particle.y * beat, z: particle.z }, {
-        rotationX: rotationX + Math.sin(rotationY * 0.7) * 0.12,
-        rotationY,
-        rotationZ
-      });
-      points.push({ particle, projection });
+      heartProjections[index].particle = particle;
+      transformPoint(particle.x * beat, particle.y * beat, particle.z, rotationX + Math.sin(rotationY * 0.7) * 0.12, rotationY, rotationZ, heartProjections[index]);
     }
-    points.sort((first, second) => first.projection.z - second.projection.z);
+    for (let index = visibleCount; index < heartProjections.length; index += 1) heartProjections[index].z = Infinity;
+    heartProjections.sort((first, second) => first.z - second.z);
     context.save();
     context.globalCompositeOperation = "lighter";
     context.beginPath();
     for (let index = 0; index <= 96; index += 1) {
-      const outline = heartPoint(index / 96 * TAU);
-      const projection = transformPoint({ x: outline.x * heartScale * beat, y: -outline.y * heartScale * beat, z: 0 }, {
-        rotationX: rotationX + Math.sin(rotationY * 0.7) * 0.12,
-        rotationY,
-        rotationZ
-      });
+      const angle = index / 96 * TAU;
+      const outlineX = 16 * Math.pow(Math.sin(angle), 3);
+      const outlineY = 13 * Math.cos(angle) - 5 * Math.cos(angle * 2) - 2 * Math.cos(angle * 3) - Math.cos(angle * 4);
+      const projection = transformPoint(outlineX * heartScale * beat, -outlineY * heartScale * beat, 0, rotationX + Math.sin(rotationY * 0.7) * 0.12, rotationY, rotationZ, starProjection);
       const x = center.x + projection.x;
       const y = center.y + projection.y;
       if (index === 0) context.moveTo(x, y);
@@ -317,17 +303,14 @@
     context.closePath();
     context.strokeStyle = "rgba(255, 73, 166, 0.5)";
     context.lineWidth = 1.15;
-    context.shadowBlur = 16;
-    context.shadowColor = "rgba(255, 17, 129, 0.9)";
     context.stroke();
-    for (const point of points) {
+    for (let index = 0; index < visibleCount; index += 1) {
+      const point = heartProjections[index];
       const particle = point.particle;
       const shimmer = 0.76 + Math.sin(time * 0.002 * particle.speed + particle.phase) * 0.24;
       context.beginPath();
       context.fillStyle = `hsla(${particle.hue}, 100%, 72%, ${particle.alpha * shimmer})`;
-      context.shadowBlur = 10;
-      context.shadowColor = "rgba(255, 22, 133, 0.95)";
-      context.arc(center.x + point.projection.x, center.y + point.projection.y, particle.size * point.projection.scale, 0, TAU);
+      context.arc(center.x + point.x, center.y + point.y, particle.size * point.scale, 0, TAU);
       context.fill();
     }
     context.restore();
@@ -335,27 +318,26 @@
 
   function drawOrbitParticles(time, delta, frontLayer) {
     const center = sceneCenter();
-    const points = [];
-    for (const particle of orbitParticles) {
+    for (let index = 0; index < orbitParticles.length; index += 1) {
+      const particle = orbitParticles[index];
       particle.angle += particle.speed * delta;
       const x = Math.cos(particle.angle) * particle.radius;
       const y = Math.sin(particle.angle) * particle.radius * (particle.plane === 1 ? 0.22 : 0.55);
       const z = particle.plane === 2 ? Math.sin(particle.angle) * particle.radius : Math.sin(particle.angle) * particle.radius * particle.tilt;
-      points.push({ particle, projection: transformPoint({ x, y, z }, { rotationX: particle.plane === 1 ? 0.75 : 0, rotationY: particle.plane === 2 ? 0.7 : 0 }) });
+      orbitProjections[index].particle = particle;
+      transformPoint(x, y, z, particle.plane === 1 ? 0.75 : 0, particle.plane === 2 ? 0.7 : 0, 0, orbitProjections[index]);
     }
-    points.sort((first, second) => first.projection.z - second.projection.z);
+    orbitProjections.sort((first, second) => first.z - second.z);
     context.save();
     context.globalCompositeOperation = "lighter";
-    for (const point of points) {
-      const isFront = point.projection.z >= 0;
+    for (const point of orbitProjections) {
+      const isFront = point.z >= 0;
       if (isFront !== frontLayer) continue;
       const particle = point.particle;
       const alpha = particle.alpha * (0.72 + Math.sin(time * 0.002 + particle.phase) * 0.28);
       context.beginPath();
       context.fillStyle = `rgba(255, 116, 190, ${alpha})`;
-      context.shadowBlur = 8;
-      context.shadowColor = "rgba(255, 25, 143, 0.85)";
-      context.arc(center.x + point.projection.x, center.y + point.projection.y, particle.size * point.projection.scale, 0, TAU);
+      context.arc(center.x + point.x, center.y + point.y, particle.size * point.scale, 0, TAU);
       context.fill();
     }
     context.restore();
@@ -484,6 +466,7 @@
     heartProgress = 0;
     iniciarMusica();
     iniciarFrases();
+    if (!animationFrame && !document.hidden) animationFrame = window.requestAnimationFrame(animate);
   }
 
   function toggleMusic(event) {
@@ -560,6 +543,8 @@
   }
 
   function animate(time) {
+    animationFrame = 0;
+    if (document.hidden || !started) return;
     const delta = Math.min(time - lastFrame || 16.67, 50);
     lastFrame = time;
     rotationY += 0.003 * delta / 16.67;
@@ -580,7 +565,7 @@
       drawShootingStars(delta);
       drawEffects();
     }
-    window.requestAnimationFrame(animate);
+    animationFrame = window.requestAnimationFrame(animate);
   }
 
   resizeCanvas();
@@ -589,8 +574,6 @@
   createHeart();
   audio.volume = 0.7;
   setMusicState(false);
-  window.requestAnimationFrame(animate);
-
   audio.addEventListener("error", () => {
     console.error("Error cargando assets/audio/musica.mp3");
   });
@@ -609,6 +592,18 @@
   canvas.addEventListener("pointercancel", handlePointerUp);
   canvas.addEventListener("dblclick", (event) => {
     if (started) addEffect(event.clientX, event.clientY, 20, true);
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+      animationFrame = 0;
+      return;
+    }
+    if (started && !animationFrame) {
+      lastFrame = performance.now();
+      animationFrame = window.requestAnimationFrame(animate);
+    }
   });
 
   window.addEventListener("resize", () => {

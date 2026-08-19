@@ -62,7 +62,7 @@ button {
   z-index: 0;
   pointer-events: none;
   border-radius: 50%;
-  filter: blur(70px);
+  filter: blur(48px);
   opacity: 0.25;
   animation: girar 28s linear infinite;
 }
